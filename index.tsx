@@ -1,19 +1,64 @@
-// src/firebase.ts
+import { useEffect, useState } from "react";
+import { 
+  collection, 
+  addDoc, 
+  serverTimestamp,
+  onSnapshot,
+  query,
+  orderBy
+} from "firebase/firestore";
+import { db } from "./firebase";
 
-import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+function App() {
+  const [items, setItems] = useState<any[]>([]);
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBOpQ3opqqo6TbeUXjijuBPutncUPwZFqo",
-  authDomain: "peabpn.firebaseapp.com",
-  projectId: "peabpn",
-  storageBucket: "peabpn.firebasestorage.app",
-  messagingSenderId: "929356206450",
-  appId: "1:929356206450:web:2e0ca1f6e46e5fa8cb4deb",
-  measurementId: "G-GM2J8E6E3G"
-};
+  // 🔥 ฟังข้อมูลแบบ realtime
+  useEffect(() => {
+    const q = query(
+      collection(db, "inventory"),
+      orderBy("createdAt", "desc")
+    );
 
-const app = initializeApp(firebaseConfig);
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setItems(data);
+    });
 
-export const db = getFirestore(app);
+    return () => unsubscribe();
+  }, []);
 
+  // ➕ เพิ่มข้อมูล
+  async function saveInventory() {
+    await addDoc(collection(db, "inventory"), {
+      name: "สายไฟแรงต่ำ",
+      code: "PEA-001",
+      quantity: 20,
+      location: "คลัง BPN",
+      createdAt: serverTimestamp()
+    });
+  }
+
+  return (
+    <div className="p-4">
+      <button
+        onClick={saveInventory}
+        className="bg-purple-600 text-white px-4 py-2 rounded-xl mb-4"
+      >
+        เพิ่มข้อมูล
+      </button>
+
+      {items.map(item => (
+        <div key={item.id} className="bg-white p-3 rounded mb-2 shadow">
+          <div>{item.name}</div>
+          <div>{item.code}</div>
+          <div>จำนวน: {item.quantity}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export default App;
